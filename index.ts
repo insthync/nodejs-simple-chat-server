@@ -21,54 +21,67 @@ async function GroupLeave(group_id: string | undefined, user_id: string | undefi
     if (!group_id) {
         return
     }
-    if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
-        return
-    }
     // Validate user
     if (!user_id) {
+        return
+    }
+    // Delete user's group data from database
+    await prisma.userGroup.deleteMany({
+        where: {
+            userId: user_id,
+            groupId: group_id,
+        }
+    })
+    // Valiate before send group moving message to clients
+    if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
         return
     }
     if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[group_id], user_id)) {
         return
     }
-    // Delete user's group data from database
-    await prisma.userGroup.delete({
-        where: {
-            userId_groupId: {
-                userId: user_id,
-                groupId: group_id,
-            }
-        }
-    })
     // Remove user from the group
-    connections[user_id].emit("group-left")
+    if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
+        connections[user_id].emit("group-left")
+    }
     delete connectionsByGroupId[group_id][user_id]
-};
+}
 
-io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
+io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
     // TODO: If the client is not allowed, disconnect
     socket.disconnect(true)
 
     // TODO: Retrieve IDs after connected
-    let user_id = ""
-    let name = ""
-    let group_id = ""
+    const user_id = ""
+    const name = ""
     socket.data.user_id = user_id
     socket.data.name = name
 
     // Set socket client to the collections
     connections[user_id] = socket
     connectionsByName[name] = socket
-    if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
-        connectionsByGroupId[group_id] = {}
-    }
-    if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[group_id], user_id)) {
-        connectionsByGroupId[group_id][user_id] = socket
-    }
+
+    // Find and store user groups
+    const userGroups = await prisma.userGroup.findMany({
+        where: {
+            userId: user_id
+        }
+    })
+    userGroups.forEach(userGroup => {
+        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, userGroup.groupId)) {
+            connectionsByGroupId[userGroup.groupId] = {}
+        }
+        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[userGroup.groupId], user_id)) {
+            connectionsByGroupId[userGroup.groupId][user_id] = socket
+        }
+    })
 
     socket.on("local", (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
         io.emit("local", {
-            "name": name,
+            "name": socket.data.name,
             "msg": data.msg,
             "map": data.map,
             "x": data.x,
@@ -78,27 +91,51 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
     })
 
     socket.on("global", (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
         io.emit("global", {
-            "name": name,
+            "name": socket.data.name,
             "msg": data.msg,
         })
     })
 
     socket.on("whisper", (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
         const targetName = data.target_name
+        if (!Object.prototype.hasOwnProperty.call(connectionsByName, targetName)) {
+            return
+        }
         const targetClient = connectionsByName[targetName]
         targetClient.emit("whisper", {
-            "name": targetClient.data.name,
+            "name": socket.data.name,
+            "msg": data.msg,
+        })
+        socket.emit("whisper", {
+            "name": socket.data.name,
             "msg": data.msg,
         })
     })
 
     socket.on("group", (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
         const group_id = data.group_id
         if (!group_id) {
             return
         }
+        // Has the group?
         if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
+            return
+        }
+        // User is in the group?
+        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[group_id], user_id)) {
             return
         }
         const targetClients = connectionsByGroupId[group_id]
@@ -117,7 +154,6 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         if (!user_id) {
             return
         }
-
         const group_id = nanoid(8)
         const title = data.title
         const icon_url = data.icon_url
@@ -130,12 +166,10 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
             }
         })
         // Add user to the group
-        await prisma.userGroup.delete({
+        await prisma.userGroup.deleteMany({
             where: {
-                userId_groupId: {
-                    userId: user_id,
-                    groupId: group_id,
-                }
+                userId: user_id,
+                groupId: group_id,
             }
         })
         await prisma.userGroup.create({
@@ -146,7 +180,7 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         })
         connectionsByGroupId[group_id] = {}
         connectionsByGroupId[group_id][user_id] = socket
-
+        // Tell the client that the group was created
         socket.emit("group-created", {
             "group_id": group_id,
             "title": title,
@@ -163,16 +197,17 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         if (!group_id) {
             return
         }
+        // Has the group?
         if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
             return
         }
+        // User is in the group?
         if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[group_id], user_id)) {
             return
         }
-
+        // Update group data at database
         const title = data.title
         const icon_url = data.icon_url
-        // Update group data at database
         await prisma.group.update({
             where: {
                 groupId: group_id,
@@ -182,7 +217,7 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
                 iconUrl: icon_url
             },
         })
-
+        // Tell the clients that the group was updated
         const targetClients = connectionsByGroupId[group_id]
         for (const user_id in targetClients) {
             const targetClient = targetClients[user_id]
@@ -194,12 +229,44 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         }
     })
 
-    socket.on("group-invite", (data) => {
-        const user_id = socket.data.user_id
+    socket.on("group-invite", async (data) => {
+        const inviter_id = socket.data.user_id
+        if (!inviter_id) {
+            return
+        }
+        const user_id = data.user_id
         if (!user_id) {
             return
         }
-        // TODO: Create invitation
+        const group_id = data.group_id
+        if (!group_id) {
+            return
+        }
+        // Has the group?
+        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, group_id)) {
+            return
+        }
+        // Inviter is in the group?
+        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[group_id], inviter_id)) {
+            return
+        }
+        // Create invitation
+        await prisma.userGroupInvitation.deleteMany({
+            where: {
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        await prisma.userGroupInvitation.create({
+            data: {
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        // Send notification message to user
+        if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
+            connections[user_id].emit("notify-group-invitation")
+        }
     })
 
     socket.on("group-invite-accept", async (data) => {
@@ -211,14 +278,28 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         if (!group_id) {
             return
         }
-        // TODO: Validate invitation
-        // Add user to the group
-        await prisma.userGroup.delete({
+        // Validate invitation
+        const countInvitation = await prisma.userGroupInvitation.count({
             where: {
-                userId_groupId: {
-                    userId: user_id,
-                    groupId: group_id,
-                }
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        if (countInvitation == 0) {
+            return
+        }
+        // Delete invitation
+        await prisma.userGroupInvitation.deleteMany({
+            where: {
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        // Add user to the group
+        await prisma.userGroup.deleteMany({
+            where: {
+                userId: user_id,
+                groupId: group_id,
             }
         })
         await prisma.userGroup.create({
@@ -231,8 +312,6 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
             connectionsByGroupId[group_id] = {}
         }
         connectionsByGroupId[group_id][user_id] = socket
-        // TODO: Delete invitation
-        
         // Broadcast new member
         const targetClients = connectionsByGroupId[group_id]
         for (const user_id in targetClients) {
@@ -243,9 +322,11 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
                 "name": targetClient.data.name,
             })
         }
+        // Send notification message to user
+        socket.emit("notify-group-invitation")
     })
 
-    socket.on("group-invite-decline", (data) => {
+    socket.on("group-invite-decline", async (data) => {
         const user_id = socket.data.user_id
         if (!user_id) {
             return
@@ -254,8 +335,25 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         if (!group_id) {
             return
         }
-        // TODO: Validate invitation
-        // TODO: Delete invitation
+        // Validate invitation
+        const countInvitation = await prisma.userGroupInvitation.count({
+            where: {
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        if (countInvitation == 0) {
+            return
+        }
+        // Delete invitation
+        await prisma.userGroupInvitation.deleteMany({
+            where: {
+                userId: user_id,
+                groupId: group_id,
+            }
+        })
+        // Send notification message to user
+        socket.emit("notify-group-invitation")
     })
 
     socket.on("leave-group", (data) => {
@@ -269,5 +367,5 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
     })
 })
 
-const port = Number(process.env.SERVER_PORT || 8215);
-io.listen(port);
+const port = Number(process.env.SERVER_PORT || 8215)
+io.listen(port)
