@@ -3,15 +3,21 @@ import * as dotenv from 'dotenv'
 import { PrismaClient } from '@prisma/client'
 import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 import { nanoid } from 'nanoid'
+import express from 'express'
+import http from 'http'
 
 interface IClientData {
     user_id: string
     name: string
+    connectionKey: string
 }
 
 dotenv.config()
 const prisma = new PrismaClient()
-const io = new Server({ /* options */ })
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+const connectingUsers: { [id: string]: IClientData } = {}
 const connections: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
@@ -47,32 +53,47 @@ async function GroupLeave(group_id: string | undefined, user_id: string | undefi
 }
 
 io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
-    // TODO: If the client is not allowed, disconnect
-    socket.disconnect(true)
 
-    // TODO: Retrieve IDs after connected
-    const user_id = ""
-    const name = ""
-    socket.data.user_id = user_id
-    socket.data.name = name
+    socket.on("validate-user", async (data) => {
+        const user_id = data.user_id
+        if (!user_id) {
+            return
+        }
+        // If the client is not allowed, disconnect
+        if (!Object.prototype.hasOwnProperty.call(connectingUsers, user_id)) {
+            socket.disconnect(true)
+            return
+        }
 
-    // Set socket client to the collections
-    connections[user_id] = socket
-    connectionsByName[name] = socket
-
-    // Find and store user groups
-    const userGroups = await prisma.userGroup.findMany({
-        where: {
-            userId: user_id
+        // Validate connection key
+        const connectingUser = connectingUsers[user_id]
+        const connectionKey = data.connectionKey
+        if (connectionKey != connectingUser.connectionKey) {
+            socket.disconnect(true)
+            return
         }
-    })
-    userGroups.forEach(userGroup => {
-        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, userGroup.groupId)) {
-            connectionsByGroupId[userGroup.groupId] = {}
-        }
-        if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[userGroup.groupId], user_id)) {
-            connectionsByGroupId[userGroup.groupId][user_id] = socket
-        }
+    
+        // Set user data after connected
+        socket.data = connectingUser
+    
+        // Set socket client to the collections
+        connections[user_id] = socket
+        connectionsByName[connectingUser.name] = socket
+    
+        // Find and store user groups
+        const userGroups = await prisma.userGroup.findMany({
+            where: {
+                userId: user_id
+            }
+        })
+        userGroups.forEach(userGroup => {
+            if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, userGroup.groupId)) {
+                connectionsByGroupId[userGroup.groupId] = {}
+            }
+            if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[userGroup.groupId], user_id)) {
+                connectionsByGroupId[userGroup.groupId][user_id] = socket
+            }
+        })
     })
 
     socket.on("local", (data) => {
@@ -229,6 +250,21 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         }
     })
 
+    socket.on("group-invitation-list", async (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
+        const invitationList = await prisma.userGroupInvitation.findMany({
+            where: {
+                userId: user_id,
+            }
+        })
+        socket.emit("group-invitation-list", {
+            list: invitationList
+        })
+    })
+
     socket.on("group-invite", async (data) => {
         const inviter_id = socket.data.user_id
         if (!inviter_id) {
@@ -368,4 +404,6 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
 })
 
 const port = Number(process.env.SERVER_PORT || 8215)
-io.listen(port)
+server.listen(port, () => {
+    console.log("Simple chat server listening on :" + port)
+})
