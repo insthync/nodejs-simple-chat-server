@@ -142,7 +142,7 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
         const title = data.title
         const icon_url = data.icon_url
         // TODO: Update group data at database
-        
+
         const targetClients = connectionsByGroupId[group_id]
         for (const user_id in targetClients) {
             const targetClient = targetClients[user_id]
@@ -176,6 +176,18 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
             connectionsByGroupId[group_id] = {}
         }
         connectionsByGroupId[group_id][user_id] = socket
+        // TODO: Delete invitation
+        
+        // Broadcast new member
+        const targetClients = connectionsByGroupId[group_id]
+        for (const user_id in targetClients) {
+            const targetClient = targetClients[user_id]
+            targetClient.emit("group-join", {
+                "group_id": group_id,
+                "user_id": targetClient.data.user_id,
+                "name": targetClient.data.name,
+            })
+        }
     })
 
     socket.on("group-invite-decline", (data) => {
@@ -188,6 +200,7 @@ io.on("connection", (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultE
             return
         }
         // TODO: Validate invitation
+        // TODO: Delete invitation
     })
 
     socket.on("leave-group", (data) => {
