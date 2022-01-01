@@ -22,3 +22,10 @@ model UserGroup {
   
   @@id([userId, groupId])
 }
+
+model UserGroupInvitation {
+  userId      String
+  groupId     String
+  
+  @@id([userId, groupId])
+}
