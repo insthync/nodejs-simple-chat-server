@@ -72,14 +72,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             socket.disconnect(true)
             return
         }
-    
+
         // Set user data after connected
         socket.data = connectingUser
-    
+
         // Set socket client to the collections
         connections[user_id] = socket
         connectionsByName[connectingUser.name] = socket
-    
+
         // Find and store user groups
         const userGroups = await prisma.userGroup.findMany({
             where: {
@@ -402,6 +402,33 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         GroupLeave(group_id, data.user_id)
     })
 })
+
+app.post('/add-user', (req, res) => {
+    // This must be able to connect by game-server only, don't allow client to connect
+    // Validate connection by secret key which will be included in header -> authorization
+    // TODO: Implements middleware if there are more than 1 function which will validate authorization like this
+    const bearerHeader = req.headers['authorization']
+    if (!bearerHeader) {
+        res.sendStatus(400)
+        return
+    }
+    // Substring `bearer `, length is 7, index is 6
+    const bearerToken = bearerHeader.substring(6)
+    const secretKeys: string[] = JSON.parse(process.env.SECRET_KEYS || "[]")
+    if (secretKeys.indexOf(bearerToken) < 0) {
+        res.sendStatus(400)
+        return
+    }
+    // Token is correct, then create user connection data
+    const connectingUser = {
+        user_id: req.body.user_id,
+        name: req.body.name,
+        connectionKey: nanoid(6),
+    } as IClientData
+    connectingUsers[connectingUser.user_id] = connectingUser
+    // Send response back
+    res.status(200).send(connectingUser)
+});
 
 const port = Number(process.env.SERVER_PORT || 8215)
 server.listen(port, () => {
