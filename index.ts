@@ -207,7 +207,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         connectionsByGroupId[group_id] = {}
         connectionsByGroupId[group_id][user_id] = socket
         // Tell the client that the group was created
-        socket.emit("group-created", {
+        socket.emit("create-group", {
             "group_id": group_id,
             "title": title,
             "icon_url": icon_url,
