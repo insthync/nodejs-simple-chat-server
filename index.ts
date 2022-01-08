@@ -305,9 +305,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             }
         })
         // Send notification message to user
-        if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
-            connections[user_id].emit("notify-group-invitation")
-        }
+        const invitationList = await prisma.userGroupInvitation.findMany({
+            where: {
+                userId: user_id,
+            }
+        })
+        socket.emit("group-invitation-list", {
+            list: invitationList
+        })
     })
 
     socket.on("group-invite-accept", async (data) => {
@@ -364,7 +369,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             })
         }
         // Send notification message to user
-        socket.emit("notify-group-invitation")
+        const invitationList = await prisma.userGroupInvitation.findMany({
+            where: {
+                userId: user_id,
+            }
+        })
+        socket.emit("group-invitation-list", {
+            list: invitationList
+        })
     })
 
     socket.on("group-invite-decline", async (data) => {
@@ -394,7 +406,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             }
         })
         // Send notification message to user
-        socket.emit("notify-group-invitation")
+        const invitationList = await prisma.userGroupInvitation.findMany({
+            where: {
+                userId: user_id,
+            }
+        })
+        socket.emit("group-invitation-list", {
+            list: invitationList
+        })
     })
 
     socket.on("leave-group", (data) => {
