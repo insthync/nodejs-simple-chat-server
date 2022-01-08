@@ -67,7 +67,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
 
         // Validate connection key
         const connectingUser = connectingUsers[user_id]
-        const connectionKey = data.connectionKey
+        const connectionKey = data.connection_key
         if (connectionKey != connectingUser.connectionKey) {
             socket.disconnect(true)
             return
@@ -102,6 +102,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             return
         }
         io.emit("local", {
+            "user_id": user_id,
             "name": socket.data.name,
             "msg": data.msg,
             "map": data.map,
@@ -117,6 +118,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             return
         }
         io.emit("global", {
+            "user_id": user_id,
             "name": socket.data.name,
             "msg": data.msg,
         })
@@ -133,10 +135,12 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         }
         const targetClient = connectionsByName[targetName]
         targetClient.emit("whisper", {
+            "user_id": user_id,
             "name": socket.data.name,
             "msg": data.msg,
         })
         socket.emit("whisper", {
+            "user_id": user_id,
             "name": socket.data.name,
             "msg": data.msg,
         })
@@ -164,6 +168,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             const targetClient = targetClients[user_id]
             targetClient.emit("group", {
                 "group_id": group_id,
+                "user_id": user_id,
                 "name": targetClient.data.name,
                 "msg": data.msg,
             })
