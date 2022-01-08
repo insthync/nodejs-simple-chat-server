@@ -47,7 +47,9 @@ async function GroupLeave(group_id: string | undefined, user_id: string | undefi
     }
     // Remove user from the group
     if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
-        connections[user_id].emit("group-left")
+        connections[user_id].emit("group-leave", {
+            group_id: group_id,
+        })
     }
     delete connectionsByGroupId[group_id][user_id]
 }
