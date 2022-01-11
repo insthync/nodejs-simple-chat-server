@@ -409,6 +409,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             })
         }
         await NotifyGroupInvitation(socket, user_id)
+        await NotifyGroup(socket, user_id)
     })
 
     socket.on("group-invite-decline", async (data) => {
