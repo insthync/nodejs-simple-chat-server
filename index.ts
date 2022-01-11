@@ -47,11 +47,17 @@ async function GroupLeave(group_id: string | undefined, user_id: string | undefi
     }
     // Remove user from the group
     if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
-        connections[user_id].emit("group-leave", {
+        await NotifyGroup(connections[user_id], user_id)
+    }
+    delete connectionsByGroupId[group_id][user_id]
+    // Broadcast leave member
+    const targetClients = connectionsByGroupId[group_id]
+    for (const user_id in targetClients) {
+        const targetClient = targetClients[user_id]
+        targetClient.emit("group-leave", {
             group_id: group_id,
         })
     }
-    delete connectionsByGroupId[group_id][user_id]
 }
 
 async function NotifyGroupInvitation(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>, user_id: string) {
