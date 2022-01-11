@@ -96,6 +96,9 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
                 connectionsByGroupId[userGroup.groupId][user_id] = socket
             }
         })
+        socket.emit("group-list", {
+            list: userGroups
+        })
     })
 
     socket.on("local", (data) => {
@@ -269,6 +272,21 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         })
         socket.emit("group-invitation-list", {
             list: invitationList
+        })
+    })
+
+    socket.on("group-list", async (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
+        const groupList = await prisma.userGroup.findMany({
+            where: {
+                userId: user_id
+            }
+        })
+        socket.emit("group-list", {
+            list: groupList
         })
     })
 
