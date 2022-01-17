@@ -5,6 +5,7 @@ import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 import { nanoid } from 'nanoid'
 import express from 'express'
 import http from 'http'
+import morgan from 'morgan'
 
 interface IClientData {
     user_id: string
@@ -14,13 +15,15 @@ interface IClientData {
 
 dotenv.config()
 const prisma = new PrismaClient()
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const app = express()
+const server = http.createServer(app)
+const io = new Server(server)
 const connectingUsers: { [id: string]: IClientData } = {}
 const connections: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
+
+app.use(morgan('combined'))
 
 async function GroupLeave(group_id: string | undefined, user_id: string | undefined) {
     // Validate group
@@ -69,7 +72,7 @@ async function NotifyGroupInvitation(socket: Socket<DefaultEventsMap, DefaultEve
     const groupIds: Array<string> = []
     list.forEach(element => {
         groupIds.push(element.groupId)
-    });
+    })
     const groupList = await prisma.group.findMany({
         where: {
             groupId: {
@@ -91,7 +94,7 @@ async function NotifyGroup(socket: Socket<DefaultEventsMap, DefaultEventsMap, De
     const groupIds: Array<string> = []
     list.forEach(element => {
         groupIds.push(element.groupId)
-    });
+    })
     const groupList = await prisma.group.findMany({
         where: {
             groupId: {
@@ -467,8 +470,8 @@ app.post('/add-user', (req, res) => {
         res.sendStatus(400)
         return
     }
-    // Substring `bearer `, length is 7, index is 6
-    const bearerToken = bearerHeader.substring(6)
+    // Substring `bearer `, length is 7
+    const bearerToken = bearerHeader.substring(7)
     const secretKeys: string[] = JSON.parse(process.env.SECRET_KEYS || "[]")
     if (secretKeys.indexOf(bearerToken) < 0) {
         res.sendStatus(400)
@@ -483,7 +486,7 @@ app.post('/add-user', (req, res) => {
     connectingUsers[connectingUser.user_id] = connectingUser
     // Send response back
     res.status(200).send(connectingUser)
-});
+})
 
 const port = Number(process.env.SERVER_PORT || 8215)
 server.listen(port, () => {
