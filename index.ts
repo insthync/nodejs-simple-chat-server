@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 import { nanoid } from 'nanoid'
 import express from 'express'
+import bodyParser from 'body-parser'
 import http from 'http'
 import morgan from 'morgan'
 
@@ -24,6 +25,7 @@ const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEvent
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
 
 app.use(morgan('combined'))
+app.use(bodyParser.json())
 
 async function GroupLeave(group_id: string | undefined, user_id: string | undefined) {
     // Validate group
