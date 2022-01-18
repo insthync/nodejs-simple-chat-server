@@ -147,9 +147,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId, userGroup.groupId)) {
                 connectionsByGroupId[userGroup.groupId] = {}
             }
-            if (!Object.prototype.hasOwnProperty.call(connectionsByGroupId[userGroup.groupId], user_id)) {
-                connectionsByGroupId[userGroup.groupId][user_id] = socket
-            }
+            connectionsByGroupId[userGroup.groupId][user_id] = socket
         })
         await NotifyGroup(socket, user_id)
     })
