@@ -104,7 +104,7 @@ async function NotifyGroup(socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             }
         }
     })
-    socket.emit("group-invitation-list", {
+    socket.emit("group-list", {
         list: groupList
     })
 }
@@ -227,7 +227,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             targetClient.emit("group", {
                 "group_id": group_id,
                 "user_id": user_id,
-                "name": targetClient.data.name,
+                "name": socket.data.name,
                 "msg": data.msg,
             })
         }
