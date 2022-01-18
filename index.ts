@@ -192,11 +192,13 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         const targetClient = connectionsByName[targetName]
         targetClient.emit("whisper", {
             "user_id": user_id,
+            "user_id2": targetClient.data.user_id,
             "name": socket.data.name,
             "msg": data.msg,
         })
         socket.emit("whisper", {
             "user_id": user_id,
+            "user_id2": targetClient.data.user_id,
             "name": socket.data.name,
             "msg": data.msg,
         })
