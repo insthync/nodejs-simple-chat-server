@@ -29,3 +29,9 @@ model UserGroupInvitation {
   
   @@id([userId, groupId])
 }
+
+model User {
+  userId      String @id
+  name       String
+  iconUrl     String?
+}
