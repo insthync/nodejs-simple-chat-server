@@ -88,6 +88,31 @@ async function NotifyGroupInvitation(user_id: string) {
     }
 }
 
+async function NotifyGroupUser(user_id: string, group_id: string) {
+    const list = await prisma.userGroup.findMany({
+        where: {
+            groupId: group_id,
+        }
+    })
+    const userIds: Array<string> = []
+    list.forEach(element => {
+        userIds.push(element.userId)
+    })
+    const userList = await prisma.user.findMany({
+        where: {
+            userId: {
+                in: userIds
+            }
+        }
+    })
+    if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
+        const socket = connections[user_id]
+        socket.emit("group-user-list", {
+            list: userList
+        })
+    }
+}
+
 async function NotifyGroup(user_id: string) {
     const list = await prisma.userGroup.findMany({
         where: {
@@ -362,6 +387,18 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         await NotifyGroupInvitation(user_id)
     })
 
+    socket.on("group-user-list", async (data) => {
+        const user_id = socket.data.user_id
+        if (!user_id) {
+            return
+        }
+        const group_id = data.group_id
+        if (!group_id) {
+            return
+        }
+        await NotifyGroupUser(user_id, group_id)
+    })
+
     socket.on("group-list", async (data) => {
         const user_id = socket.data.user_id
         if (!user_id) {
@@ -508,6 +545,20 @@ app.post('/add-user', (req, res) => {
         connectionKey: nanoid(6),
     } as IClientData
     connectingUsers[connectingUser.user_id] = connectingUser
+    prisma.user.upsert({
+        create: {
+            userId: req.body.user_id,
+            name: req.body.name,
+            iconUrl: req.body.icon_url,
+        },
+        update: {
+            name: req.body.name,
+            iconUrl: req.body.icon_url,
+        },
+        where: {
+            userId: req.body.user_id,
+        }
+    })
     // Send response back
     res.status(200).send(connectingUser)
 })
