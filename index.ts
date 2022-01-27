@@ -7,6 +7,7 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import http from 'http'
 import morgan from 'morgan'
+import BadWordsFilter = require("bad-words")
 
 interface IClientData {
     user_id: string
@@ -23,6 +24,7 @@ const connectingUsers: { [id: string]: IClientData } = {}
 const connections: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
+const filter = new BadWordsFilter()
 
 app.use(morgan('combined'))
 app.use(bodyParser.json())
@@ -225,7 +227,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         io.emit("local", {
             "user_id": user_id,
             "name": socket.data.name,
-            "msg": data.msg,
+            "msg": filter.clean(data.msg),
             "map": data.map,
             "x": data.x,
             "y": data.y,
@@ -241,7 +243,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         io.emit("global", {
             "user_id": user_id,
             "name": socket.data.name,
-            "msg": data.msg,
+            "msg": filter.clean(data.msg),
         })
     })
 
@@ -260,14 +262,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             "user_id2": targetClient.data.user_id,
             "name": socket.data.name,
             "name2": targetClient.data.name,
-            "msg": data.msg,
+            "msg": filter.clean(data.msg),
         })
         socket.emit("whisper", {
             "user_id": user_id,
             "user_id2": targetClient.data.user_id,
             "name": socket.data.name,
             "name2": targetClient.data.name,
-            "msg": data.msg,
+            "msg": filter.clean(data.msg),
         })
     })
 
@@ -295,7 +297,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
                 "group_id": group_id,
                 "user_id": user_id,
                 "name": socket.data.name,
-                "msg": data.msg,
+                "msg": filter.clean(data.msg),
             })
         }
     })
