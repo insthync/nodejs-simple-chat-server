@@ -8,6 +8,7 @@ import bodyParser from 'body-parser'
 import http from 'http'
 import morgan from 'morgan'
 import BadWordsFilter = require("bad-words")
+import badWords from './badWords.json'
 
 interface IClientData {
     user_id: string
@@ -25,6 +26,7 @@ const connections: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, De
 const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
 const filter = new BadWordsFilter()
+filter.addWords(...badWords)
 
 app.use(morgan('combined'))
 app.use(bodyParser.json())
