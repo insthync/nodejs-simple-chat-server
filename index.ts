@@ -27,6 +27,7 @@ const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEvent
 const connectionsByGroupId: { [group_id: string]: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } } = {}
 const profanityOptions = new ProfanityOptions()
 profanityOptions.wholeWord = false
+profanityOptions.grawlix = "*****"
 const profanity = new Profanity(profanityOptions)
 profanity.addWords(badWords)
 
