@@ -105,6 +105,7 @@ async function NotifyGroupUser(user_id: string, group_id: string) {
             }
         }
     })
+    
     if (Object.prototype.hasOwnProperty.call(connections, user_id)) {
         const socket = connections[user_id]
         socket.emit("group-user-list", {
@@ -522,7 +523,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
     })
 })
 
-app.post('/add-user', (req, res) => {
+app.post('/add-user', async (req, res) => {
     // This must be able to connect by game-server only, don't allow client to connect
     // Validate connection by secret key which will be included in header -> authorization
     // TODO: Implements middleware if there are more than 1 function which will validate authorization like this
@@ -545,20 +546,30 @@ app.post('/add-user', (req, res) => {
         connectionKey: nanoid(6),
     } as IClientData
     connectingUsers[connectingUser.user_id] = connectingUser
-    prisma.user.upsert({
-        create: {
-            userId: req.body.user_id,
-            name: req.body.name,
-            iconUrl: req.body.icon_url,
-        },
-        update: {
-            name: req.body.name,
-            iconUrl: req.body.icon_url,
-        },
+    const user = await prisma.user.findUnique({
         where: {
             userId: req.body.user_id,
         }
     })
+    if (user) {
+        await prisma.user.update({
+            where: {
+                userId: req.body.user_id,
+            },
+            data: {
+                name: req.body.name,
+                iconUrl: req.body.icon_url,
+            }
+        })
+    } else {
+        await prisma.user.create({
+            data: {
+                userId: req.body.user_id,
+                name: req.body.name,
+                iconUrl: req.body.icon_url,
+            }
+        })
+    }
     // Send response back
     res.status(200).send(connectingUser)
 })
