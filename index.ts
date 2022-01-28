@@ -62,8 +62,8 @@ async function GroupLeave(groupId: string | undefined, userId: string | undefine
     delete connectionsByGroupId[groupId][userId]
     // Broadcast leave member
     const targetClients = connectionsByGroupId[groupId]
-    for (const userId in targetClients) {
-        const targetClient = targetClients[userId]
+    for (const targetUserId in targetClients) {
+        const targetClient = targetClients[targetUserId]
         targetClient.emit("group-leave", {
             groupId: groupId,
         })
@@ -170,8 +170,8 @@ async function AddUserToGroup(userId: string, groupId: string) {
     }
     // Broadcast new member
     const targetClients = connectionsByGroupId[groupId]
-    for (const userId in targetClients) {
-        const targetClient = targetClients[userId]
+    for (const targetUserId in targetClients) {
+        const targetClient = targetClients[targetUserId]
         targetClient.emit("group-join", {
             "groupId": groupId,
             "userId": targetClient.data.userId,
@@ -297,8 +297,8 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             return
         }
         const targetClients = connectionsByGroupId[groupId]
-        for (const userId in targetClients) {
-            const targetClient = targetClients[userId]
+        for (const targetUserId in targetClients) {
+            const targetClient = targetClients[targetUserId]
             targetClient.emit("group", {
                 "groupId": groupId,
                 "userId": userId,
@@ -378,8 +378,8 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         })
         // Tell the clients that the group was updated
         const targetClients = connectionsByGroupId[groupId]
-        for (const userId in targetClients) {
-            const targetClient = targetClients[userId]
+        for (const targetUserId in targetClients) {
+            const targetClient = targetClients[targetUserId]
             targetClient.emit("update-group", {
                 "groupId": groupId,
                 "title": title,
