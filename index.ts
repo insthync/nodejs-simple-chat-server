@@ -183,6 +183,7 @@ async function AddUserToGroup(userId: string, groupId: string) {
 }
 
 io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
+    console.log("Connected by [" + socket.id + "]");
 
     socket.on("validate-user", async (data) => {
         const userId = data.userId
@@ -192,6 +193,7 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         // If the client is not allowed, disconnect
         if (!Object.prototype.hasOwnProperty.call(connectingUsers, userId)) {
             socket.disconnect(true)
+            console.log("Not allow [" + socket.id + "] to connect because it has invalid user ID")
             return
         }
 
@@ -200,12 +202,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         const connectionKey = data.connectionKey
         if (connectionKey != connectingUser.connectionKey) {
             socket.disconnect(true)
+            console.log("Not allow [" + socket.id + "] to connect because it has invalid connection key")
             return
         }
 
         // Disconnect older socket
         if (Object.prototype.hasOwnProperty.call(connections, userId)) {
             connections[userId].disconnect(true);
+            console.log("Disconnect [" + connections[userId].id + "] because it is going to connect by newer client with the same user ID")
         }
 
         // Set user data after connected
