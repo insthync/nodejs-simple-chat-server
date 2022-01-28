@@ -183,11 +183,12 @@ async function AddUserToGroup(userId: string, groupId: string) {
 }
 
 io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
-    console.log("Connected by [" + socket.id + "]");
-
     socket.on("validate-user", async (data) => {
         const userId = data.userId
+        console.log("Connecting by [" + socket.id + "] user ID [" + userId + "]")
         if (!userId) {
+            socket.disconnect(true)
+            console.log("Not allow [" + socket.id + "] to connect because it has invalid user ID")
             return
         }
         // If the client is not allowed, disconnect
@@ -239,15 +240,18 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         if (!userId) {
             return
         }
-        io.emit("local", {
-            "userId": userId,
-            "name": socket.data.name,
-            "msg": profanity.censor(data.msg),
-            "map": data.map,
-            "x": data.x,
-            "y": data.y,
-            "z": data.z,
-        })
+        for (const targetUserId in connections) {
+            const targetClient = connections[targetUserId]
+            targetClient.emit("local", {
+                "userId": userId,
+                "name": socket.data.name,
+                "msg": profanity.censor(data.msg),
+                "map": data.map,
+                "x": data.x,
+                "y": data.y,
+                "z": data.z,
+            })
+        }
     })
 
     socket.on("global", (data) => {
@@ -255,11 +259,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         if (!userId) {
             return
         }
-        io.emit("global", {
-            "userId": userId,
-            "name": socket.data.name,
-            "msg": profanity.censor(data.msg),
-        })
+        for (const targetUserId in connections) {
+            const targetClient = connections[targetUserId]
+            targetClient.emit("global", {
+                "userId": userId,
+                "name": socket.data.name,
+                "msg": profanity.censor(data.msg),
+            })
+        }
     })
 
     socket.on("whisper", (data) => {
