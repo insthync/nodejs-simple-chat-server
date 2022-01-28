@@ -295,6 +295,32 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         })
     })
 
+    socket.on("whisper-by-id", (data) => {
+        const userId = socket.data.userId
+        if (!userId) {
+            return
+        }
+        const targetUserId = data.targetUserId
+        if (!Object.prototype.hasOwnProperty.call(connections, targetUserId)) {
+            return
+        }
+        const targetClient = connections[targetUserId]
+        targetClient.emit("whisper-by-id", {
+            "userId": userId,
+            "userId2": targetClient.data.userId,
+            "name": socket.data.name,
+            "name2": targetClient.data.name,
+            "msg": profanity.censor(data.msg),
+        })
+        socket.emit("whisper-by-id", {
+            "userId": userId,
+            "userId2": targetClient.data.userId,
+            "name": socket.data.name,
+            "name2": targetClient.data.name,
+            "msg": profanity.censor(data.msg),
+        })
+    })
+
     socket.on("group", (data) => {
         const userId = socket.data.userId
         if (!userId) {
