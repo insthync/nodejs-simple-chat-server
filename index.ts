@@ -203,6 +203,11 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             return
         }
 
+        // Disconnect older socket
+        if (Object.prototype.hasOwnProperty.call(connections, userId)) {
+            connections[userId].disconnect(true);
+        }
+
         // Set user data after connected
         socket.data = connectingUser
 
