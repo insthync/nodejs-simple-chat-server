@@ -305,14 +305,14 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
             return
         }
         const targetClient = connections[targetUserId]
-        targetClient.emit("whisper-by-id", {
+        targetClient.emit("whisper", {
             "userId": userId,
             "userId2": targetClient.data.userId,
             "name": socket.data.name,
             "name2": targetClient.data.name,
             "msg": profanity.censor(data.msg),
         })
-        socket.emit("whisper-by-id", {
+        socket.emit("whisper", {
             "userId": userId,
             "userId2": targetClient.data.userId,
             "name": socket.data.name,
