@@ -573,10 +573,9 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
     })
 })
 
-app.post('/add-user', async (req, res) => {
+function validateUser(req: any, res: any, next: any) {
     // This must be able to connect by game-server only, don't allow client to connect
     // Validate connection by secret key which will be included in header -> authorization
-    // TODO: Implements middleware if there are more than 1 function which will validate authorization like this
     const bearerHeader = req.headers['authorization']
     if (!bearerHeader) {
         res.sendStatus(400)
@@ -589,6 +588,10 @@ app.post('/add-user', async (req, res) => {
         res.sendStatus(400)
         return
     }
+    next();
+};
+
+app.post('/add-user', validateUser, async (req, res, next) => {
     // Token is correct, then create user connection data
     const connectingUser = {
         userId: req.body.userId,
@@ -623,6 +626,11 @@ app.post('/add-user', async (req, res) => {
     // Send response back
     res.status(200).send(connectingUser)
 })
+
+app.post('/remove-user', validateUser, async (req, res, next) => {
+    delete connectingUsers[req.body.userId]
+    res.status(200).send()
+});
 
 const port = Number(process.env.SERVER_PORT || 8215)
 server.listen(port, () => {
