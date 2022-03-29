@@ -4,8 +4,11 @@ import { PrismaClient } from '@prisma/client'
 import { DefaultEventsMap } from 'socket.io/dist/typed-events'
 import { nanoid } from 'nanoid'
 import express from 'express'
+import cors from 'cors'
 import bodyParser from 'body-parser'
+import https from 'https'
 import http from 'http'
+import fs from 'fs'
 import morgan from 'morgan'
 import { Profanity, ProfanityOptions } from '@2toad/profanity'
 import badWords from './badWords.json'
@@ -19,8 +22,32 @@ interface IClientData {
 dotenv.config()
 const prisma = new PrismaClient()
 const app = express()
-const server = http.createServer(app)
-const io = new Server(server)
+app.use(cors())
+
+const port = Number(process.env.SERVER_PORT || 8000)
+const useHttps = Number(process.env.USE_HTTPS || 0) > 0
+const keyFilePath = process.env.HTTPS_KEY_FILE_PATH || ''
+const certFilePath = process.env.HTTPS_CERT_FILE_PATH || ''
+const httpsPort = Number(process.env.HTTPS_SERVER_PORT || 8080)
+
+const io = new Server()
+const httpServer = http.createServer(app)
+io.attach(httpServer)
+httpServer.listen(port, () => {
+    console.log(`Simple Socket.io Chat Server is listening on port ${port}`)
+})
+
+if (useHttps) {
+    const httpsServer = https.createServer({
+        key: fs.readFileSync(keyFilePath),
+        cert: fs.readFileSync(certFilePath),
+    }, app)
+    io.attach(httpsServer)
+    httpsServer.listen(httpsPort, () => {
+        console.log(`Simple Socket.io Chat Server is listening on port ${httpsPort}`)
+    })
+}
+
 const connectingUsers: { [id: string]: IClientData } = {}
 const connections: { [id: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
 const connectionsByName: { [name: string]: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData> } = {}
@@ -182,7 +209,7 @@ async function AddUserToGroup(userId: string, groupId: string) {
     await NotifyGroup(userId)
 }
 
-io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
+const setSocketEvents = async (socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, IClientData>) => {
     socket.on("validate-user", async (data) => {
         const userId = data.userId
         console.log("Connecting by [" + socket.id + "] user ID [" + userId + "]")
@@ -571,7 +598,9 @@ io.on("connection", async (socket: Socket<DefaultEventsMap, DefaultEventsMap, De
         const groupId = data.groupId
         GroupLeave(groupId, data.userId)
     })
-})
+}
+
+io.on("connection", setSocketEvents)
 
 function validateUser(req: any, res: any, next: any) {
     // This must be able to connect by game-server only, don't allow client to connect
@@ -589,7 +618,7 @@ function validateUser(req: any, res: any, next: any) {
         return
     }
     next();
-};
+}
 
 app.post('/add-user', validateUser, async (req, res, next) => {
     // Token is correct, then create user connection data
@@ -630,9 +659,4 @@ app.post('/add-user', validateUser, async (req, res, next) => {
 app.post('/remove-user', validateUser, async (req, res, next) => {
     delete connectingUsers[req.body.userId]
     res.status(200).send()
-});
-
-const port = Number(process.env.SERVER_PORT || 8215)
-server.listen(port, () => {
-    console.log("Simple chat server listening on :" + port)
 })
