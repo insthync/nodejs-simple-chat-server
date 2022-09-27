@@ -1,5 +1,5 @@
 {
-  "name": "nodejs-simple-socketio-chat-server",
+  "name": "nodejs-simple-chat-server",
   "version": "1.0.0",
   "description": "A simple chat server which planned to made for any games, it will have local, global, whisper and group chat (which will be created by users) channels",
   "main": "index.js",
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/insthync/nodejs-simple-socketio-chat-server.git"
+    "url": "git+https://github.com/insthync/nodejs-simple-chat-server.git"
   },
   "keywords": [],
   "author": "Ittipon Teerapruettikulchai",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/insthync/nodejs-simple-socketio-chat-server/issues"
+    "url": "https://github.com/insthync/nodejs-simple-chat-server/issues"
   },
-  "homepage": "https://github.com/insthync/nodejs-simple-socketio-chat-server#readme",
+  "homepage": "https://github.com/insthync/nodejs-simple-chat-server#readme",
   "devDependencies": {
     "@types/express": "^4.17.14",
     "@types/luxon": "^3.0.1",
