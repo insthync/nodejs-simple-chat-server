@@ -12,26 +12,26 @@ datasource db {
 
 model Group {
   groupId     String     @id
-  title       String
-  iconUrl     String?
+  title       String     @db.VarChar(150)
+  iconUrl     String?    @db.Text
 }
 
 model UserGroup {
-  userId      String
-  groupId     String
+  userId      String     @db.VarChar(36)
+  groupId     String     @db.VarChar(36)
   
   @@id([userId, groupId])
 }
 
 model UserGroupInvitation {
-  userId      String
-  groupId     String
+  userId      String     @db.VarChar(36)
+  groupId     String     @db.VarChar(36)
   
   @@id([userId, groupId])
 }
 
 model User {
-  userId      String @id
-  name       String
-  iconUrl     String?
+  userId      String     @id @db.VarChar(36)
+  name        String     @db.VarChar(150)
+  iconUrl     String?    @db.Text
 }
