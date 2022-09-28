@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon",
     "start": "ts-node index.ts",
-    "pm2": "tsc && pm2 start ecosystem.config.js"
+    "pm2": "tsc && pm2 start ecosystem.config.js",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
